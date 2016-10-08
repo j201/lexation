@@ -8,14 +8,16 @@ import Lexicon exposing (..)
 
 type alias Board = Matrix String
 
-iKnowWhatImDoing : Maybe a -> a
-iKnowWhatImDoing x = case x of
-                       Just x -> x
-                       _ -> Debug.crash "Apparently not..."
-
 randFrom : List a -> Generator a
 randFrom xs = Random.map (\n -> iKnowWhatImDoing <| head <| drop n xs)
                          (Random.int 0 (length xs - 1))
+
+randGivenProbs : List (a, Float) -> Generator a
+randGivenProbs ps = let pick ps x = case ps of
+                                      [] -> Debug.crash "Empty probability list!"
+                                      [(a,_)] -> a
+                                      (a,p)::ps' -> if x < p then a else pick ps' (x-p)
+                    in Random.map (pick ps) (Random.float 0 1)
 
 groups : Int -> List a -> List (List a)
 groups n xs = if isEmpty xs
@@ -23,7 +25,7 @@ groups n xs = if isEmpty xs
                 else take n xs :: groups n (drop n xs)
 
 randBoard : Int -> Int -> Generator Board
-randBoard m n = Random.list (m*n) (randFrom possibleCells) |>
+randBoard m n = Random.list (m*n) (randGivenProbs cellProbs) |>
                 Random.map (Matrix.fromList << groups n)
 
 adjacent : Board -> Location -> List Location
@@ -59,3 +61,5 @@ allWords : Board -> List String
 allWords b = sortUnique <|
              concatMap (\l -> allWordsAt b "" l [] lexicon) <|
              concatMap (\r -> map (\c -> loc r c) [0..colCount b]) [0..rowCount b]
+
+boardBySeed n = fst <| Random.step (randBoard 4 4) (Random.initialSeed n)
