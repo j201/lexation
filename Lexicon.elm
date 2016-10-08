@@ -1,10 +1,10 @@
-module Lexicon exposing (Lexicon, lexicon, hasWord, addWord)
+module Lexicon exposing (Lexicon, lexicon, hasWord, addWord, ldict, lend)
 
 import Dict exposing (Dict)
 import String
 import List exposing (..)
 
-import WordsSmall exposing (words)
+import Words exposing (words)
 import Base exposing (..)
 
 type Lexicon = Lexicon Bool (Maybe (Dict String Lexicon))
@@ -12,18 +12,6 @@ type Lexicon = Lexicon Bool (Maybe (Dict String Lexicon))
 ldict (Lexicon _ d) = d
 lend (Lexicon b _) = b
 lempty = Lexicon False Nothing
-
-cellHead : String -> Maybe String
-cellHead s = let cellHead' s cs = case cs of
-                                    [] -> Nothing
-                                    c::cs -> if String.startsWith c s
-                                                then Just c
-                                                else cellHead' s cs
-             in cellHead' s possibleCells
-
-cellSplit : String -> Maybe (String, String)
-cellSplit s = cellHead s |>
-              Maybe.map (\h -> (h, String.dropLeft (String.length h) s))
 
 dictCreateUpdate : Maybe (Dict comparable v) -> comparable -> v -> Dict comparable v
 dictCreateUpdate d k v = case d of
