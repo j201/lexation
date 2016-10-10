@@ -1,5 +1,5 @@
 -- Stuff that everything needs, should probably be reorganized once the structure of the project is more solid
-module Base exposing (cellProbs, possibleCells, cellHead, cellSplit, iKnowWhatImDoing)
+module Base exposing (cellProbs, possibleCells, cellHead, cellSplit, iKnowWhatImDoing, groups, sortUnique)
 
 import List exposing (..)
 import String
@@ -51,3 +51,15 @@ iKnowWhatImDoing : Maybe a -> a
 iKnowWhatImDoing x = case x of
                        Just x -> x
                        _ -> Debug.crash "Apparently not..."
+
+groups : Int -> List a -> List (List a)
+groups n xs = if isEmpty xs
+                then []
+                else take n xs :: groups n (drop n xs)
+
+sortUnique : List comparable -> List comparable
+sortUnique = let uniq xs = case xs of
+                             [] -> []
+                             x::[] -> [x]
+                             x::y::xs -> if x == y then uniq (y::xs) else x :: uniq (y::xs)
+             in uniq << sort
