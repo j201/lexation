@@ -1,4 +1,4 @@
-module Board exposing (Board, randBoard, boardBySeed, allWords)
+module Board exposing (Board, randBoard, boardBySeed, allWords, wordOnBoard)
 
 import Matrix exposing (Matrix, Location, loc, row, col, colCount, rowCount)
 import Random exposing (Generator)
@@ -47,9 +47,33 @@ allWordsAt b head loc visited lex =
                                                                              lex')
                                          nextLocs
 
+allLocs : Board -> List Location
+allLocs b = concatMap (\r -> map (\c -> loc r c) [0..colCount b - 1]) [0..rowCount b - 1]
+
 allWords : Board -> List String
-allWords b = sortUnique <|
-             concatMap (\l -> allWordsAt b "" l [] lexicon) <|
-             concatMap (\r -> map (\c -> loc r c) [0..colCount b]) [0..rowCount b]
+allWords b = allLocs b |>
+             concatMap (\l -> allWordsAt b "" l [] lexicon) |>
+             sortUnique
 
 boardBySeed n = fst <| Random.step (randBoard 4 4) (Random.initialSeed n)
+
+nextPaths : String -> List Location -> Board -> List (List Location)
+nextPaths ch path b = (case path of
+                         [] -> allLocs b
+                         l::_ -> adjacent b l) |>
+                      filter (\l -> not (member l path)) |>
+                      filter (\l -> iKnowWhatImDoing (Matrix.get l b) == ch) |>
+                      map (\l -> l::path)
+
+wordOnBoard : String -> Board -> Bool
+wordOnBoard s b = case cellSplit s of
+                       Nothing -> False
+                       Just (h,t) -> any (\p -> wordFrom t p b) (nextPaths h [] b) -- Code duplication - can remove?
+
+wordFrom : String -> List Location -> Board -> Bool
+wordFrom left path b = case (left, path) of
+                          (_,[]) -> False
+                          ("",_) -> True
+                          _ -> case cellSplit left of
+                                 Nothing -> False
+                                 Just (h,t) -> any (\p -> wordFrom t p b) (nextPaths h path b)
