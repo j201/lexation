@@ -1,9 +1,10 @@
-module Board exposing (Board, randBoard, boardBySeed, allWords, wordOnBoard)
+module Board exposing (Board, randBoard, boardBySeed, validWords, wordOnBoard)
 
 import Matrix exposing (Matrix, Location, loc, row, col, colCount, rowCount)
 import Random exposing (Generator)
 import List exposing (..) -- I really have to do this?
 import Dict
+import String
 
 import Base exposing (..)
 import Lexicon exposing (..)
@@ -21,8 +22,11 @@ randGivenProbs ps = let pick ps x = case ps of
                                       (a,p)::ps' -> if x < p then a else pick ps' (x-p)
                     in Random.map (pick ps) (Random.float 0 1)
 
+randCell : Generator String
+randCell = randGivenProbs cellProbs
+
 randBoard : Int -> Int -> Generator Board
-randBoard m n = Random.list (m*n) (randGivenProbs cellProbs) |>
+randBoard m n = Random.list (m*n) randCell |>
                 Random.map (Matrix.fromList << groups n)
 
 adjacent : Board -> Location -> List Location
@@ -55,7 +59,34 @@ allWords b = allLocs b |>
              concatMap (\l -> allWordsAt b "" l [] lexicon) |>
              sortUnique
 
-boardBySeed n = fst <| Random.step (randBoard 4 4) (Random.initialSeed n)
+validWords : Board -> List String
+validWords b = allWords b |> filter (\s -> String.length s >= 3)
+
+randLoc : Board -> Generator Location
+randLoc b = Random.pair (Random.int 0 (rowCount b - 1)) (Random.int 0 (colCount b - 1))
+
+-- Changes one letter randomly
+mutateBoard : Board -> Generator Board
+mutateBoard b = randLoc b `Random.andThen` (\l -> Random.map (\ch -> Matrix.set l ch b) randCell)
+
+-- tfw no monads
+randReturn : a -> Generator a
+randReturn x = Random.map (\_ -> x) Random.bool
+
+randBoardWithScore : Int -> Int -> Int -> Generator Board
+randBoardWithScore m n s =
+    let rbws : Int -> Board -> Generator Board
+        rbws s' b = if s' == s
+                      then randReturn b
+                      else mutateBoard b
+                             `Random.andThen` (\b' -> let s'' = length (validWords b')
+                                                      in if abs (s'' - s) < abs (s' - s)
+                                                           then rbws s'' b'
+                                                           else rbws s' b)
+        b0 = randBoard m n
+    in b0 `Random.andThen` (\b -> rbws (length (validWords b)) b)
+
+boardBySeed n = fst <| Random.step (randBoardWithScore 4 4 100) (Random.initialSeed n)
 
 nextPaths : String -> List Location -> Board -> List (List Location)
 nextPaths ch path b = (case path of
