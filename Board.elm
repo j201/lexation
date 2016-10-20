@@ -1,4 +1,4 @@
-module Board exposing (Board, randBoard, boardBySeed, validWords, wordOnBoard)
+module Board exposing (Board, randBoard, genBoard, validWords, wordOnBoard, BoardGenSpec)
 
 import Matrix exposing (Matrix, Location, loc, row, col, colCount, rowCount)
 import Random exposing (Generator)
@@ -73,10 +73,10 @@ mutateBoard b = randLoc b `Random.andThen` (\l -> Random.map (\ch -> Matrix.set 
 randReturn : a -> Generator a
 randReturn x = Random.map (\_ -> x) Random.bool
 
-randBoardWithScore : Int -> Int -> Int -> Generator Board
-randBoardWithScore m n s =
+randBoardWithScore : Int -> Int -> Int -> Int -> Generator Board
+randBoardWithScore m n s r =
     let rbws : Int -> Board -> Generator Board
-        rbws s' b = if s' == s
+        rbws s' b = if s' <= s + r && s' >= s - r
                       then randReturn b
                       else mutateBoard b
                              `Random.andThen` (\b' -> let s'' = length (validWords b')
@@ -86,7 +86,9 @@ randBoardWithScore m n s =
         b0 = randBoard m n
     in b0 `Random.andThen` (\b -> rbws (length (validWords b)) b)
 
-boardBySeed n = fst <| Random.step (randBoardWithScore 4 4 100) (Random.initialSeed n)
+type alias BoardGenSpec = { m: Int, n: Int, score: Int, range: Int, seed: Int }
+genBoard : BoardGenSpec -> Board
+genBoard bgs = fst <| Random.step (randBoardWithScore bgs.m bgs.n bgs.score bgs.range) (Random.initialSeed bgs.seed)
 
 nextPaths : String -> List Location -> Board -> List (List Location)
 nextPaths ch path b = (case path of

@@ -11,14 +11,17 @@ import String
 import Lexicon exposing (..)
 import Board exposing (..)
 
-type alias Model = { board: Board, typed: String, scored: List String, seed : Int }
+type alias Model = { board: Board, typed: String, scored: List String, bgs: BoardGenSpec }
 
 type Msg =
     Input String |
     NewBoard
 
+boardGenSpec : BoardGenSpec
+boardGenSpec = { m = 4, n = 4, score = 100, range = 3, seed = 0 }
+
 initial : Model
-initial = { board = boardBySeed 0, typed = "", scored = [], seed = 0 }
+initial = { board = genBoard boardGenSpec, typed = "", scored = [], bgs = boardGenSpec }
 
 boardView : Model -> Html msg
 boardView m =
@@ -31,7 +34,9 @@ update msg m = case msg of
                  Input s -> if String.length s >= 3 && not (member s m.scored) && hasWord s lexicon && wordOnBoard s m.board
                               then { m | typed = "", scored = s::m.scored }
                               else { m | typed = s }
-                 NewBoard -> { m | board = boardBySeed (m.seed + 1), seed = m.seed + 1 }
+                 NewBoard -> let oldBgs = m.bgs -- it is silly that i have to do this
+                                 newBgs = { oldBgs | seed = m.bgs.seed + 1 }
+                             in { m | board = genBoard newBgs, bgs = newBgs }
 
 view : Model -> Html Msg
 view m =
